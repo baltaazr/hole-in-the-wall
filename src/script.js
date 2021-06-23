@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as dat from 'dat.gui';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import gsap from 'gsap';
 
 /**
  * Base
@@ -22,8 +23,12 @@ const scene = new THREE.Scene();
 const gltfLoader = new GLTFLoader();
 
 let mixer = null;
-let leftArm = null;
-let rightArm = null;
+
+let leftShoulder = null;
+let rightShoulder = null;
+let leftElbow = null;
+let rightElbow = null;
+
 let wallOne = null;
 let wallTwo = null;
 let wallThree = null;
@@ -31,8 +36,43 @@ let wallFour = null;
 let wallFive = null;
 
 gltfLoader.load('/models/RiggedFigure.glb', (gltf) => {
-  leftArm = gltf.scene.getObjectByName('arm_joint_L_1');
-  rightArm = gltf.scene.getObjectByName('arm_joint_R_1');
+  leftShoulder = gltf.scene.getObjectByName('arm_joint_L_1');
+  rightShoulder = gltf.scene.getObjectByName('arm_joint_R_1');
+  leftElbow = gltf.scene.getObjectByName('arm_joint_L_2');
+  rightElbow = gltf.scene.getObjectByName('arm_joint_R_2');
+
+  gui
+    .add(leftShoulder.rotation, 'x', -Math.PI, Math.PI, 0.01)
+    .name('leftShoulderX');
+  gui
+    .add(leftShoulder.rotation, 'y', -Math.PI, Math.PI, 0.01)
+    .name('leftShoulderY');
+  gui
+    .add(leftShoulder.rotation, 'z', -Math.PI, Math.PI, 0.01)
+    .name('leftShoulderZ');
+  gui
+    .add(rightShoulder.rotation, 'x', -Math.PI, Math.PI, 0.01)
+    .name('rightShoulderX');
+  gui
+    .add(rightShoulder.rotation, 'y', -Math.PI, Math.PI, 0.01)
+    .name('rightShoulderY');
+  gui
+    .add(rightShoulder.rotation, 'z', -Math.PI, Math.PI, 0.01)
+    .name('rightShoulderZ');
+
+  gui.add(leftElbow.rotation, 'x', -Math.PI, Math.PI, 0.01).name('leftElbowX');
+  gui.add(leftElbow.rotation, 'y', -Math.PI, Math.PI, 0.01).name('leftElbowY');
+  gui.add(leftElbow.rotation, 'z', -Math.PI, Math.PI, 0.01).name('leftElbowZ');
+  gui
+    .add(rightElbow.rotation, 'x', -Math.PI, Math.PI, 0.01)
+    .name('rightElbowX');
+  gui
+    .add(rightElbow.rotation, 'y', -Math.PI, Math.PI, 0.01)
+    .name('rightElbowY');
+  gui
+    .add(rightElbow.rotation, 'z', -Math.PI, Math.PI, 0.01)
+    .name('rightElbowZ');
+
   scene.add(gltf.scene);
 
   // Animation
@@ -159,32 +199,87 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
  */
 const clock = new THREE.Clock();
 let previousTime = 0;
+let wallIdx = 0;
 
 const tick = () => {
+  const walls = [wallOne, wallTwo, wallThree, wallFour, wallFive];
   const elapsedTime = clock.getElapsedTime();
   const deltaTime = elapsedTime - previousTime;
   previousTime = elapsedTime;
 
-  if (leftArm) {
-    leftArm.rotation.y += Math.sin(elapsedTime) * 0.005;
+  for (const wall of walls) {
+    if (wall) {
+      wall.position.z -= deltaTime * 1;
+    }
   }
-  if (rightArm) {
-    rightArm.rotation.y += Math.sin(elapsedTime) * 0.005;
-  }
-  if (wallOne) {
-    wallOne.position.z -= deltaTime * 1;
-  }
-  if (wallTwo) {
-    wallTwo.position.z -= deltaTime * 1;
-  }
-  if (wallThree) {
-    wallThree.position.z -= deltaTime * 1;
-  }
-  if (wallFour) {
-    wallFour.position.z -= deltaTime * 1;
-  }
-  if (wallFive) {
-    wallFive.position.z -= deltaTime * 1;
+
+  if (wallIdx < walls.length && walls[wallIdx]) {
+    const curWall = walls[wallIdx];
+    if (curWall.position.z <= 2) {
+      switch (curWall) {
+        case wallOne:
+          gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
+          gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
+          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.59 });
+          gsap.to(rightShoulder.rotation, { duration: 1, x: -2.06 });
+          gsap.to(rightShoulder.rotation, { duration: 1, y: 0.05 });
+          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.54 });
+          break;
+        case wallTwo:
+          gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
+          gsap.to(leftShoulder.rotation, { duration: 1, y: -0.77 });
+          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
+          gsap.to(rightShoulder.rotation, { duration: 1, x: -1.93 });
+          gsap.to(rightShoulder.rotation, { duration: 1, y: -0.63 });
+          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.41 });
+          break;
+        case wallThree:
+          gsap.to(leftShoulder.rotation, { duration: 1, x: -0.29 });
+          gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
+          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.59 });
+          gsap.to(rightShoulder.rotation, { duration: 1, x: -2.75 });
+          gsap.to(rightShoulder.rotation, { duration: 1, y: 0.05 });
+          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.68 });
+          gsap.to(leftElbow.rotation, { duration: 1, x: -0.16 });
+          gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
+          gsap.to(leftElbow.rotation, { duration: 1, z: 1.61 });
+          gsap.to(rightElbow.rotation, { duration: 1, x: 2.02 });
+          gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
+          gsap.to(rightElbow.rotation, { duration: 1, z: 1.07 });
+          break;
+        case wallFour:
+          gsap.to(leftShoulder.rotation, { duration: 1, x: 2.63 });
+          gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
+          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.45 });
+          gsap.to(rightShoulder.rotation, { duration: 1, x: 0.18 });
+          gsap.to(rightShoulder.rotation, { duration: 1, y: 0.05 });
+          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.61 });
+          gsap.to(leftElbow.rotation, { duration: 1, x: -0.16 });
+          gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
+          gsap.to(leftElbow.rotation, { duration: 1, z: 1.61 });
+          gsap.to(rightElbow.rotation, { duration: 1, x: 2.02 });
+          gsap.to(rightElbow.rotation, { duration: 1, y: -0.29 });
+          gsap.to(rightElbow.rotation, { duration: 1, z: 1.07 });
+          break;
+        case wallFive:
+          gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
+          gsap.to(leftShoulder.rotation, { duration: 1, y: -1.38 });
+          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
+          gsap.to(rightShoulder.rotation, { duration: 1, x: -2.34 });
+          gsap.to(rightShoulder.rotation, { duration: 1, y: -1.32 });
+          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.09 });
+          gsap.to(leftElbow.rotation, { duration: 1, x: -0.08 });
+          gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
+          gsap.to(leftElbow.rotation, { duration: 1, z: 0.57 });
+          gsap.to(rightElbow.rotation, { duration: 1, x: 2.64 });
+          gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
+          gsap.to(rightElbow.rotation, { duration: 1, z: 2.51 });
+          break;
+        default:
+          break;
+      }
+      wallIdx += 1;
+    }
   }
 
   // Model animation
