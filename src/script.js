@@ -148,7 +148,8 @@ scene.add(directionalLight);
  */
 const sizes = {
   width: window.innerWidth,
-  height: window.innerHeight
+  height: window.innerHeight,
+  mag: 2
 };
 
 window.addEventListener('resize', () => {
@@ -157,7 +158,9 @@ window.addEventListener('resize', () => {
   sizes.height = window.innerHeight;
 
   // Update camera
-  camera.aspect = sizes.width / sizes.height;
+  const aspectRatio = sizes.width / sizes.height;
+  camera.left = -2 * aspectRatio;
+  camera.right = 2 * aspectRatio;
   camera.updateProjectionMatrix();
 
   // Update renderer
@@ -169,19 +172,47 @@ window.addEventListener('resize', () => {
  * Camera
  */
 // Base camera
+const aspectRatio = sizes.width / sizes.height;
 const camera = new THREE.PerspectiveCamera(
-  75,
+  50,
   sizes.width / sizes.height,
-  0.1,
-  100
+  1,
+  20
 );
-camera.position.set(2, 2, 2);
+const properties = {
+  x: 0,
+  y: 1,
+  z: 0
+};
+camera.position.set(0, 1.5, -5);
+camera.lookAt(new THREE.Vector3(0, 0.5, 0));
 scene.add(camera);
+gui.add(camera.position, 'x', -3, 3, 0.01).name('camera x');
+gui.add(camera.position, 'y', -3, 3, 0.01).name('camera y');
+gui.add(camera.position, 'z', -10, -1, 0.01).name('camera z');
+gui
+  .add(properties, 'x', -3, 3, 0.01)
+  .name('look at x')
+  .onChange(() => {
+    camera.lookAt(new THREE.Vector3(properties.x, properties.y, properties.z));
+  });
+gui
+  .add(properties, 'y', -3, 3, 0.01)
+  .name('look at y')
+  .onChange(() => {
+    camera.lookAt(new THREE.Vector3(properties.x, properties.y, properties.z));
+  });
+gui
+  .add(properties, 'z', -3, 3, 0.01)
+  .name('look at z')
+  .onChange(() => {
+    camera.lookAt(new THREE.Vector3(properties.x, properties.y, properties.z));
+  });
 
 // Controls
-const controls = new OrbitControls(camera, canvas);
-controls.target.set(0, 0.75, 0);
-controls.enableDamping = true;
+// const controls = new OrbitControls(camera, canvas);
+// controls.target.set(0, 0.75, 0);
+// controls.enableDamping = true;
 
 /**
  * Renderer
@@ -302,7 +333,7 @@ const tick = () => {
   }
 
   // Update controls
-  controls.update();
+  // controls.update();
 
   // Render
   renderer.render(scene, camera);
