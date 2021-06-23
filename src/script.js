@@ -209,13 +209,13 @@ const tick = () => {
 
   for (const wall of walls) {
     if (wall) {
-      wall.position.z -= deltaTime * 1;
+      wall.position.z -= deltaTime * 5;
     }
   }
 
   if (wallIdx < walls.length && walls[wallIdx]) {
     const curWall = walls[wallIdx];
-    if (curWall.position.z <= 2) {
+    if (curWall.position.z <= 5) {
       switch (curWall) {
         case wallOne:
           gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
@@ -250,9 +250,9 @@ const tick = () => {
         case wallFour:
           gsap.to(leftShoulder.rotation, { duration: 1, x: 2.63 });
           gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
-          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.45 });
+          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.76 });
           gsap.to(rightShoulder.rotation, { duration: 1, x: 0.18 });
-          gsap.to(rightShoulder.rotation, { duration: 1, y: 0.05 });
+          gsap.to(rightShoulder.rotation, { duration: 1, y: -0.38 });
           gsap.to(rightShoulder.rotation, { duration: 1, z: 1.61 });
           gsap.to(leftElbow.rotation, { duration: 1, x: -0.16 });
           gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
@@ -280,6 +280,20 @@ const tick = () => {
       }
       wallIdx += 1;
     }
+  }
+  if (wallIdx > 0 && walls[wallIdx - 1].position.z < -1) {
+    gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
+    gsap.to(leftShoulder.rotation, { duration: 1, y: -1.2 });
+    gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
+    gsap.to(rightShoulder.rotation, { duration: 1, x: -2.29 });
+    gsap.to(rightShoulder.rotation, { duration: 1, y: -1.14 });
+    gsap.to(rightShoulder.rotation, { duration: 1, z: 0.97 });
+    gsap.to(leftElbow.rotation, { duration: 1, x: -0.08 });
+    gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
+    gsap.to(leftElbow.rotation, { duration: 1, z: 0.57 });
+    gsap.to(rightElbow.rotation, { duration: 1, x: 2.64 });
+    gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
+    gsap.to(rightElbow.rotation, { duration: 1, z: 2.51 });
   }
 
   // Model animation
