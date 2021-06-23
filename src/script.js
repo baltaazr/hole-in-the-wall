@@ -36,6 +36,10 @@ gltfLoader.load('/models/RiggedFigure.glb', (gltf) => {
   action.play();
 });
 
+gltfLoader.load('/models/Walls1.glb', (gltf) => {
+  scene.add(gltf.scene);
+});
+
 /**
  * Floor
  */
@@ -49,7 +53,7 @@ const floor = new THREE.Mesh(
 );
 floor.receiveShadow = true;
 floor.rotation.x = -Math.PI * 0.5;
-scene.add(floor);
+// scene.add(floor);
 
 /**
  * Lights
