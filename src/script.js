@@ -24,6 +24,11 @@ const gltfLoader = new GLTFLoader();
 let mixer = null;
 let leftArm = null;
 let rightArm = null;
+let wallOne = null;
+let wallTwo = null;
+let wallThree = null;
+let wallFour = null;
+let wallFive = null;
 
 gltfLoader.load('/models/RiggedFigure.glb', (gltf) => {
   leftArm = gltf.scene.getObjectByName('arm_joint_L_1');
@@ -37,22 +42,48 @@ gltfLoader.load('/models/RiggedFigure.glb', (gltf) => {
 });
 
 gltfLoader.load('/models/Walls1.glb', (gltf) => {
-  scene.add(gltf.scene);
+  wallOne = gltf.scene;
+  wallOne.position.z += 20;
+  scene.add(wallOne);
+});
+
+gltfLoader.load('/models/Walls2.glb', (gltf) => {
+  wallTwo = gltf.scene;
+  wallTwo.position.z += 40;
+  scene.add(wallTwo);
+});
+
+gltfLoader.load('/models/Walls3.glb', (gltf) => {
+  wallThree = gltf.scene;
+  wallThree.position.z += 60;
+  scene.add(wallThree);
+});
+
+gltfLoader.load('/models/Walls4.glb', (gltf) => {
+  wallFour = gltf.scene;
+  wallFour.position.z += 80;
+  scene.add(wallFour);
+});
+
+gltfLoader.load('/models/Walls5.glb', (gltf) => {
+  wallFive = gltf.scene;
+  wallFive.position.z += 100;
+  scene.add(wallFive);
 });
 
 /**
  * Floor
  */
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(10, 10),
-  new THREE.MeshStandardMaterial({
-    color: '#444444',
-    metalness: 0,
-    roughness: 0.5
-  })
-);
-floor.receiveShadow = true;
-floor.rotation.x = -Math.PI * 0.5;
+// const floor = new THREE.Mesh(
+//   new THREE.PlaneGeometry(10, 10),
+//   new THREE.MeshStandardMaterial({
+//     color: '#444444',
+//     metalness: 0,
+//     roughness: 0.5
+//   })
+// );
+// floor.receiveShadow = true;
+// floor.rotation.x = -Math.PI * 0.5;
 // scene.add(floor);
 
 /**
@@ -139,6 +170,21 @@ const tick = () => {
   }
   if (rightArm) {
     rightArm.rotation.y += Math.sin(elapsedTime) * 0.005;
+  }
+  if (wallOne) {
+    wallOne.position.z -= deltaTime * 1;
+  }
+  if (wallTwo) {
+    wallTwo.position.z -= deltaTime * 1;
+  }
+  if (wallThree) {
+    wallThree.position.z -= deltaTime * 1;
+  }
+  if (wallFour) {
+    wallFour.position.z -= deltaTime * 1;
+  }
+  if (wallFive) {
+    wallFive.position.z -= deltaTime * 1;
   }
 
   // Model animation
