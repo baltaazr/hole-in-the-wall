@@ -16,6 +16,8 @@ const canvas = document.querySelector('canvas.webgl');
 
 // Scene
 const scene = new THREE.Scene();
+const fog = new THREE.Fog('#5F939A', 15, 20);
+scene.fog = fog;
 
 /**
  * Models
@@ -114,17 +116,17 @@ gltfLoader.load('/models/Walls5.glb', (gltf) => {
 /**
  * Floor
  */
-// const floor = new THREE.Mesh(
-//   new THREE.PlaneGeometry(10, 10),
-//   new THREE.MeshStandardMaterial({
-//     color: '#444444',
-//     metalness: 0,
-//     roughness: 0.5
-//   })
-// );
-// floor.receiveShadow = true;
-// floor.rotation.x = -Math.PI * 0.5;
-// scene.add(floor);
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(100, 100),
+  new THREE.MeshStandardMaterial({
+    color: '#3A6351',
+    metalness: 0,
+    roughness: 0.5
+  })
+);
+floor.receiveShadow = true;
+floor.rotation.x = -Math.PI * 0.5;
+scene.add(floor);
 
 /**
  * Lights
@@ -158,9 +160,7 @@ window.addEventListener('resize', () => {
   sizes.height = window.innerHeight;
 
   // Update camera
-  const aspectRatio = sizes.width / sizes.height;
-  camera.left = -2 * aspectRatio;
-  camera.right = 2 * aspectRatio;
+  camera.aspect = sizes.width / sizes.height;
   camera.updateProjectionMatrix();
 
   // Update renderer
@@ -224,6 +224,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor('#5F939A');
 
 /**
  * Animate
