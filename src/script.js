@@ -10,7 +10,7 @@ import TWEEN from '@tweenjs/tween.js';
  * Base
  */
 // Debug
-const gui = new dat.GUI();
+const gui = new dat.GUI({ closed: true });
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl');
@@ -27,6 +27,8 @@ const gltfLoader = new GLTFLoader();
 
 let mixer = null;
 
+let player = null;
+
 let leftShoulder = null;
 let rightShoulder = null;
 let leftElbow = null;
@@ -39,6 +41,8 @@ let wallFour = null;
 let wallFive = null;
 
 gltfLoader.load('/models/RiggedFigure.glb', (gltf) => {
+  player = gltf.scene;
+
   leftShoulder = gltf.scene.getObjectByName('arm_joint_L_1');
   rightShoulder = gltf.scene.getObjectByName('arm_joint_R_1');
   leftElbow = gltf.scene.getObjectByName('arm_joint_L_2');
@@ -126,6 +130,8 @@ const subtitleTexture = textureLoader.load('/textures/matcaps/2.png');
  */
 const fontLoader = new THREE.FontLoader();
 
+let endMesh = null;
+
 fontLoader.load('/fonts/helvetiker_regular.typeface.json', (font) => {
   const titleGeometry = new THREE.TextGeometry('Hole in the Wall', {
     font: font,
@@ -142,8 +148,28 @@ fontLoader.load('/fonts/helvetiker_regular.typeface.json', (font) => {
   titleGeometry.translate(
     -(titleGeometry.boundingBox.max.x - 0.02) * 0.5, // Subtract bevel size
     1.6,
-    -10 // Subtract bevel thickness
+    -10
   );
+
+  const endGeometry = new THREE.TextGeometry('Level One Complete', {
+    font: font,
+    size: 0.5,
+    height: 0.2,
+    curveSegments: 12,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 5
+  });
+  endGeometry.computeBoundingBox();
+  endGeometry.translate(
+    -(endGeometry.boundingBox.max.x - 0.02) * 0.5, // Subtract bevel size
+    1.6,
+    -2
+  );
+  endGeometry.rotateY(Math.PI);
+
   const subtitleGeometry = new THREE.TextGeometry('Press anywhere to start', {
     font: font,
     size: 0.1,
@@ -159,16 +185,27 @@ fontLoader.load('/fonts/helvetiker_regular.typeface.json', (font) => {
   subtitleGeometry.translate(
     -(subtitleGeometry.boundingBox.max.x - 0.02) * 0.5, // Subtract bevel size
     1.2,
-    -10 // Subtract bevel thickness
+    -10
   );
+
   const titleMaterial = new THREE.MeshMatcapMaterial({ matcap: titleTexture });
+
+  const endMaterial = new THREE.MeshMatcapMaterial({ matcap: titleTexture });
+
   const subtitleMaterial = new THREE.MeshMatcapMaterial({
     matcap: subtitleTexture
   });
+
   const title = new THREE.Mesh(titleGeometry, titleMaterial);
   scene.add(title);
+
   const subtitle = new THREE.Mesh(subtitleGeometry, subtitleMaterial);
   scene.add(subtitle);
+
+  endMesh = new THREE.Mesh(endGeometry, endMaterial);
+  scene.add(endMesh);
+  endMesh.material.transparent = true;
+  endMesh.material.opacity = 0;
 });
 
 /**
@@ -275,7 +312,8 @@ gui
  * Game State
  */
 const state = {
-  play: false
+  play: false,
+  end: false
 };
 
 window.addEventListener('click', () => {
@@ -345,10 +383,12 @@ const tick = (time) => {
   const deltaTime = elapsedTime - previousTime;
   previousTime = elapsedTime;
 
+  const speed = 5;
+
   if (state.play) {
     for (const wall of walls) {
       if (wall) {
-        wall.position.z -= deltaTime * 5;
+        wall.position.z -= deltaTime * speed;
       }
     }
 
@@ -435,10 +475,44 @@ const tick = (time) => {
       gsap.to(rightElbow.rotation, { duration: 1, z: 2.51 });
     }
 
+    if (
+      wallIdx == walls.length &&
+      walls[wallIdx - 1].position.z < -6 &&
+      !state.end
+    ) {
+      state.end = true;
+
+      gsap.to(endMesh.material, { duration: 0.5, opacity: 1 });
+
+      const startQuaternion = camera.quaternion.clone();
+      camera.lookAt(new THREE.Vector3(0, 1.5, 0));
+
+      const endQuaternion = camera.quaternion.clone();
+      camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+
+      let time = { t: 0 };
+      new TWEEN.Tween(time)
+        .to({ t: 1 }, 500)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(() => {
+          THREE.Quaternion.slerp(
+            startQuaternion,
+            endQuaternion,
+            camera.quaternion,
+            time.t
+          );
+        })
+        .start();
+    }
+
     // Model animation
     if (mixer) {
       mixer.update(deltaTime);
     }
+  }
+
+  if (state.end) {
+    player.position.z += deltaTime * 1;
   }
 
   // Update controls
