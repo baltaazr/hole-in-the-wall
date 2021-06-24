@@ -17,7 +17,7 @@ const canvas = document.querySelector('canvas.webgl');
 
 // Scene
 const scene = new THREE.Scene();
-const fog = new THREE.Fog('#5F939A', 15, 20);
+const fog = new THREE.Fog('#37C5DF', 15, 20);
 scene.fog = fog;
 
 /**
@@ -39,6 +39,18 @@ let wallTwo = null;
 let wallThree = null;
 let wallFour = null;
 let wallFive = null;
+
+/**
+ * Textures
+ */
+const textureLoader = new THREE.TextureLoader();
+const titleTexture = textureLoader.load('/textures/matcaps/1.png');
+const subtitleTexture = textureLoader.load('/textures/matcaps/2.png');
+const wallOneTexture = textureLoader.load('/textures/matcaps/3.png');
+const wallTwoTexture = textureLoader.load('/textures/matcaps/4.png');
+const wallThreeTexture = textureLoader.load('/textures/matcaps/5.png');
+const wallFourTexture = textureLoader.load('/textures/matcaps/6.png');
+const wallFiveTexture = textureLoader.load('/textures/matcaps/7.png');
 
 gltfLoader.load('/models/RiggedFigure.glb', (gltf) => {
   player = gltf.scene;
@@ -89,41 +101,49 @@ gltfLoader.load('/models/RiggedFigure.glb', (gltf) => {
 });
 
 gltfLoader.load('/models/Walls1.glb', (gltf) => {
-  wallOne = gltf.scene;
+  wallOne = new THREE.Mesh(
+    gltf.scene.getObjectByName('Cube').geometry,
+    new THREE.MeshMatcapMaterial({ matcap: wallOneTexture })
+  );
   wallOne.position.z += 20;
   scene.add(wallOne);
 });
 
 gltfLoader.load('/models/Walls2.glb', (gltf) => {
-  wallTwo = gltf.scene;
+  wallTwo = new THREE.Mesh(
+    gltf.scene.getObjectByName('Cube').geometry,
+    new THREE.MeshMatcapMaterial({ matcap: wallTwoTexture })
+  );
   wallTwo.position.z += 40;
   scene.add(wallTwo);
 });
 
 gltfLoader.load('/models/Walls3.glb', (gltf) => {
-  wallThree = gltf.scene;
+  wallThree = new THREE.Mesh(
+    gltf.scene.getObjectByName('Cube').geometry,
+    new THREE.MeshMatcapMaterial({ matcap: wallThreeTexture })
+  );
   wallThree.position.z += 60;
   scene.add(wallThree);
 });
 
 gltfLoader.load('/models/Walls4.glb', (gltf) => {
-  wallFour = gltf.scene;
+  wallFour = new THREE.Mesh(
+    gltf.scene.getObjectByName('Cube').geometry,
+    new THREE.MeshMatcapMaterial({ matcap: wallFourTexture })
+  );
   wallFour.position.z += 80;
   scene.add(wallFour);
 });
 
 gltfLoader.load('/models/Walls5.glb', (gltf) => {
-  wallFive = gltf.scene;
+  wallFive = new THREE.Mesh(
+    gltf.scene.getObjectByName('Cube').geometry,
+    new THREE.MeshMatcapMaterial({ matcap: wallFiveTexture })
+  );
   wallFive.position.z += 100;
   scene.add(wallFive);
 });
-
-/**
- * Textures
- */
-const textureLoader = new THREE.TextureLoader();
-const titleTexture = textureLoader.load('/textures/matcaps/1.png');
-const subtitleTexture = textureLoader.load('/textures/matcaps/2.png');
 
 /**
  * Fonts
@@ -214,7 +234,7 @@ fontLoader.load('/fonts/helvetiker_regular.typeface.json', (font) => {
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(100, 100),
   new THREE.MeshStandardMaterial({
-    color: '#3A6351',
+    color: '#699b2c',
     metalness: 0,
     roughness: 0.5
   })
@@ -261,6 +281,25 @@ window.addEventListener('resize', () => {
   // Update renderer
   renderer.setSize(sizes.width, sizes.height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
+window.addEventListener('dblclick', () => {
+  const fullscreenElement =
+    document.fullscreenElement || document.webkitFullscreenElement;
+
+  if (!fullscreenElement) {
+    if (canvas.requestFullscreen) {
+      canvas.requestFullscreen();
+    } else if (canvas.webkitRequestFullscreen) {
+      canvas.webkitRequestFullscreen();
+    }
+  } else {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+  }
 });
 
 /**
@@ -313,7 +352,10 @@ gui
  */
 const state = {
   play: false,
-  end: false
+  end: false,
+  goingThrough: false,
+  zoomedIn: false,
+  zoomedIn: false
 };
 
 window.addEventListener('click', () => {
@@ -366,7 +408,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setClearColor('#5F939A');
+renderer.setClearColor('#37C5DF');
 
 /**
  * Animate
@@ -395,6 +437,9 @@ const tick = (time) => {
     if (wallIdx < walls.length && walls[wallIdx]) {
       const curWall = walls[wallIdx];
       if (curWall.position.z <= 5) {
+        state.goingThrough = true;
+        state.zoomedIn = false;
+        state.zoomedOut = false;
         switch (curWall) {
           case wallOne:
             gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
@@ -460,7 +505,13 @@ const tick = (time) => {
         wallIdx += 1;
       }
     }
-    if (wallIdx > 0 && walls[wallIdx - 1].position.z < -1) {
+    if (
+      state.goingThrough &&
+      wallIdx > 0 &&
+      walls[wallIdx - 1].position.z < -1
+    ) {
+      state.goingThrough = false;
+
       gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
       gsap.to(leftShoulder.rotation, { duration: 1, y: -1.2 });
       gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
@@ -477,7 +528,7 @@ const tick = (time) => {
 
     if (
       wallIdx == walls.length &&
-      walls[wallIdx - 1].position.z < -6 &&
+      walls[wallIdx - 1].position.z < -10 &&
       !state.end
     ) {
       state.end = true;
@@ -501,6 +552,61 @@ const tick = (time) => {
             camera.quaternion,
             time.t
           );
+        })
+        .start();
+    }
+
+    if (!state.zoomedIn && wallIdx > 0 && walls[wallIdx - 1].position.z < -1) {
+      state.zoomedIn = true;
+
+      const startQuaternion = camera.quaternion.clone();
+      camera.position.set(0, 1.2, -5);
+      camera.lookAt(new THREE.Vector3(0, 1, 0));
+      const endQuaternion = camera.quaternion.clone();
+      camera.position.set(0, 1.5, -5);
+      camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+
+      let time = { t: 0 };
+      new TWEEN.Tween(time)
+        .to({ t: 1 }, 500)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(() => {
+          THREE.Quaternion.slerp(
+            startQuaternion,
+            endQuaternion,
+            camera.quaternion,
+            time.t
+          );
+          camera.position.y = 1.5 - 0.3 * time.t;
+          camera.fov = 50 - 40 * time.t;
+          camera.updateProjectionMatrix();
+        })
+        .start();
+    }
+
+    if (!state.zoomedOut && wallIdx > 0 && walls[wallIdx - 1].position.z < -6) {
+      state.zoomedOut = true;
+      const startQuaternion = camera.quaternion.clone();
+      camera.position.set(0, 1.5, -5);
+      camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+      const endQuaternion = camera.quaternion.clone();
+      camera.position.set(0, 1.2, -5);
+      camera.lookAt(new THREE.Vector3(0, 1, 0));
+
+      let time = { t: 0 };
+      new TWEEN.Tween(time)
+        .to({ t: 1 }, 500)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(() => {
+          THREE.Quaternion.slerp(
+            startQuaternion,
+            endQuaternion,
+            camera.quaternion,
+            time.t
+          );
+          camera.position.y = 1.2 + 0.3 * time.t;
+          camera.fov = 10 + 40 * time.t;
+          camera.updateProjectionMatrix();
         })
         .start();
     }
