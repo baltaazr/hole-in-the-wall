@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as dat from 'dat.gui';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import gsap from 'gsap';
+import TWEEN from '@tweenjs/tween.js';
 
 /**
  * Base
@@ -114,6 +115,63 @@ gltfLoader.load('/models/Walls5.glb', (gltf) => {
 });
 
 /**
+ * Textures
+ */
+const textureLoader = new THREE.TextureLoader();
+const titleTexture = textureLoader.load('/textures/matcaps/1.png');
+const subtitleTexture = textureLoader.load('/textures/matcaps/2.png');
+
+/**
+ * Fonts
+ */
+const fontLoader = new THREE.FontLoader();
+
+fontLoader.load('/fonts/helvetiker_regular.typeface.json', (font) => {
+  const titleGeometry = new THREE.TextGeometry('Hole in the Wall', {
+    font: font,
+    size: 0.5,
+    height: 0.2,
+    curveSegments: 12,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.02,
+    bevelOffset: 0,
+    bevelSegments: 5
+  });
+  titleGeometry.computeBoundingBox();
+  titleGeometry.translate(
+    -(titleGeometry.boundingBox.max.x - 0.02) * 0.5, // Subtract bevel size
+    1.6,
+    -10 // Subtract bevel thickness
+  );
+  const subtitleGeometry = new THREE.TextGeometry('Press anywhere to start', {
+    font: font,
+    size: 0.1,
+    height: 0.2,
+    curveSegments: 12,
+    bevelEnabled: true,
+    bevelThickness: 0.03,
+    bevelSize: 0.01,
+    bevelOffset: 0,
+    bevelSegments: 5
+  });
+  subtitleGeometry.computeBoundingBox();
+  subtitleGeometry.translate(
+    -(subtitleGeometry.boundingBox.max.x - 0.02) * 0.5, // Subtract bevel size
+    1.2,
+    -10 // Subtract bevel thickness
+  );
+  const titleMaterial = new THREE.MeshMatcapMaterial({ matcap: titleTexture });
+  const subtitleMaterial = new THREE.MeshMatcapMaterial({
+    matcap: subtitleTexture
+  });
+  const title = new THREE.Mesh(titleGeometry, titleMaterial);
+  scene.add(title);
+  const subtitle = new THREE.Mesh(subtitleGeometry, subtitleMaterial);
+  scene.add(subtitle);
+});
+
+/**
  * Floor
  */
 const floor = new THREE.Mesh(
@@ -172,44 +230,90 @@ window.addEventListener('resize', () => {
  * Camera
  */
 // Base camera
-const aspectRatio = sizes.width / sizes.height;
 const camera = new THREE.PerspectiveCamera(
   50,
   sizes.width / sizes.height,
   1,
   20
 );
-const properties = {
+const lookAt = {
   x: 0,
   y: 1,
   z: 0
 };
 camera.position.set(0, 1.5, -5);
+camera.lookAt(new THREE.Vector3(5, 1, -5));
+const interQuaternion = camera.quaternion.clone();
 camera.lookAt(new THREE.Vector3(0, 0.5, 0));
+const gameQuaternion = camera.quaternion.clone();
+camera.lookAt(new THREE.Vector3(0, 1.5, -10));
 scene.add(camera);
+
 gui.add(camera.position, 'x', -3, 3, 0.01).name('camera x');
 gui.add(camera.position, 'y', -3, 3, 0.01).name('camera y');
 gui.add(camera.position, 'z', -10, -1, 0.01).name('camera z');
 gui
-  .add(properties, 'x', -3, 3, 0.01)
+  .add(lookAt, 'x', -3, 3, 0.01)
   .name('look at x')
   .onChange(() => {
-    camera.lookAt(new THREE.Vector3(properties.x, properties.y, properties.z));
+    camera.lookAt(new THREE.Vector3(lookAt.x, lookAt.y, lookAt.z));
   });
 gui
-  .add(properties, 'y', -3, 3, 0.01)
+  .add(lookAt, 'y', -3, 3, 0.01)
   .name('look at y')
   .onChange(() => {
-    camera.lookAt(new THREE.Vector3(properties.x, properties.y, properties.z));
+    camera.lookAt(new THREE.Vector3(lookAt.x, lookAt.y, lookAt.z));
   });
 gui
-  .add(properties, 'z', -3, 3, 0.01)
+  .add(lookAt, 'z', -3, 3, 0.01)
   .name('look at z')
   .onChange(() => {
-    camera.lookAt(new THREE.Vector3(properties.x, properties.y, properties.z));
+    camera.lookAt(new THREE.Vector3(lookAt.x, lookAt.y, lookAt.z));
   });
 
-// Controls
+/**
+ * Game State
+ */
+const state = {
+  play: false
+};
+
+window.addEventListener('click', () => {
+  if (state.play) return;
+
+  const startQuaternion = camera.quaternion.clone();
+  let time = { t: 0 };
+  new TWEEN.Tween(time)
+    .to({ t: 1 }, 500)
+    .easing(TWEEN.Easing.Quadratic.InOut)
+    .onUpdate(() => {
+      THREE.Quaternion.slerp(
+        startQuaternion,
+        interQuaternion,
+        camera.quaternion,
+        time.t
+      );
+    })
+    .onComplete(() => {
+      let secondTime = { t: 0 };
+      new TWEEN.Tween(secondTime)
+        .to({ t: 1 }, 500)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(() => {
+          THREE.Quaternion.slerp(
+            interQuaternion,
+            gameQuaternion,
+            camera.quaternion,
+            secondTime.t
+          );
+        })
+        .onComplete(() => {
+          state.play = true;
+        })
+        .start();
+    })
+    .start();
+});
 // const controls = new OrbitControls(camera, canvas);
 // controls.target.set(0, 0.75, 0);
 // controls.enableDamping = true;
@@ -233,104 +337,108 @@ const clock = new THREE.Clock();
 let previousTime = 0;
 let wallIdx = 0;
 
-const tick = () => {
+const tick = (time) => {
+  TWEEN.update(time);
+
   const walls = [wallOne, wallTwo, wallThree, wallFour, wallFive];
   const elapsedTime = clock.getElapsedTime();
   const deltaTime = elapsedTime - previousTime;
   previousTime = elapsedTime;
 
-  for (const wall of walls) {
-    if (wall) {
-      wall.position.z -= deltaTime * 5;
-    }
-  }
-
-  if (wallIdx < walls.length && walls[wallIdx]) {
-    const curWall = walls[wallIdx];
-    if (curWall.position.z <= 5) {
-      switch (curWall) {
-        case wallOne:
-          gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
-          gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
-          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.59 });
-          gsap.to(rightShoulder.rotation, { duration: 1, x: -2.06 });
-          gsap.to(rightShoulder.rotation, { duration: 1, y: 0.05 });
-          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.54 });
-          break;
-        case wallTwo:
-          gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
-          gsap.to(leftShoulder.rotation, { duration: 1, y: -0.77 });
-          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
-          gsap.to(rightShoulder.rotation, { duration: 1, x: -1.93 });
-          gsap.to(rightShoulder.rotation, { duration: 1, y: -0.63 });
-          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.41 });
-          break;
-        case wallThree:
-          gsap.to(leftShoulder.rotation, { duration: 1, x: -0.29 });
-          gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
-          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.59 });
-          gsap.to(rightShoulder.rotation, { duration: 1, x: -2.75 });
-          gsap.to(rightShoulder.rotation, { duration: 1, y: 0.05 });
-          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.68 });
-          gsap.to(leftElbow.rotation, { duration: 1, x: -0.16 });
-          gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
-          gsap.to(leftElbow.rotation, { duration: 1, z: 1.61 });
-          gsap.to(rightElbow.rotation, { duration: 1, x: 2.02 });
-          gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
-          gsap.to(rightElbow.rotation, { duration: 1, z: 1.07 });
-          break;
-        case wallFour:
-          gsap.to(leftShoulder.rotation, { duration: 1, x: 2.63 });
-          gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
-          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.76 });
-          gsap.to(rightShoulder.rotation, { duration: 1, x: 0.18 });
-          gsap.to(rightShoulder.rotation, { duration: 1, y: -0.38 });
-          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.61 });
-          gsap.to(leftElbow.rotation, { duration: 1, x: -0.16 });
-          gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
-          gsap.to(leftElbow.rotation, { duration: 1, z: 1.61 });
-          gsap.to(rightElbow.rotation, { duration: 1, x: 2.02 });
-          gsap.to(rightElbow.rotation, { duration: 1, y: -0.29 });
-          gsap.to(rightElbow.rotation, { duration: 1, z: 1.07 });
-          break;
-        case wallFive:
-          gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
-          gsap.to(leftShoulder.rotation, { duration: 1, y: -1.38 });
-          gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
-          gsap.to(rightShoulder.rotation, { duration: 1, x: -2.34 });
-          gsap.to(rightShoulder.rotation, { duration: 1, y: -1.32 });
-          gsap.to(rightShoulder.rotation, { duration: 1, z: 1.09 });
-          gsap.to(leftElbow.rotation, { duration: 1, x: -0.08 });
-          gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
-          gsap.to(leftElbow.rotation, { duration: 1, z: 0.57 });
-          gsap.to(rightElbow.rotation, { duration: 1, x: 2.64 });
-          gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
-          gsap.to(rightElbow.rotation, { duration: 1, z: 2.51 });
-          break;
-        default:
-          break;
+  if (state.play) {
+    for (const wall of walls) {
+      if (wall) {
+        wall.position.z -= deltaTime * 5;
       }
-      wallIdx += 1;
     }
-  }
-  if (wallIdx > 0 && walls[wallIdx - 1].position.z < -1) {
-    gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
-    gsap.to(leftShoulder.rotation, { duration: 1, y: -1.2 });
-    gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
-    gsap.to(rightShoulder.rotation, { duration: 1, x: -2.29 });
-    gsap.to(rightShoulder.rotation, { duration: 1, y: -1.14 });
-    gsap.to(rightShoulder.rotation, { duration: 1, z: 0.97 });
-    gsap.to(leftElbow.rotation, { duration: 1, x: -0.08 });
-    gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
-    gsap.to(leftElbow.rotation, { duration: 1, z: 0.57 });
-    gsap.to(rightElbow.rotation, { duration: 1, x: 2.64 });
-    gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
-    gsap.to(rightElbow.rotation, { duration: 1, z: 2.51 });
-  }
 
-  // Model animation
-  if (mixer) {
-    mixer.update(deltaTime);
+    if (wallIdx < walls.length && walls[wallIdx]) {
+      const curWall = walls[wallIdx];
+      if (curWall.position.z <= 5) {
+        switch (curWall) {
+          case wallOne:
+            gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
+            gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
+            gsap.to(leftShoulder.rotation, { duration: 1, z: -1.59 });
+            gsap.to(rightShoulder.rotation, { duration: 1, x: -2.06 });
+            gsap.to(rightShoulder.rotation, { duration: 1, y: 0.05 });
+            gsap.to(rightShoulder.rotation, { duration: 1, z: 1.54 });
+            break;
+          case wallTwo:
+            gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
+            gsap.to(leftShoulder.rotation, { duration: 1, y: -0.77 });
+            gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
+            gsap.to(rightShoulder.rotation, { duration: 1, x: -1.93 });
+            gsap.to(rightShoulder.rotation, { duration: 1, y: -0.63 });
+            gsap.to(rightShoulder.rotation, { duration: 1, z: 1.41 });
+            break;
+          case wallThree:
+            gsap.to(leftShoulder.rotation, { duration: 1, x: -0.29 });
+            gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
+            gsap.to(leftShoulder.rotation, { duration: 1, z: -1.59 });
+            gsap.to(rightShoulder.rotation, { duration: 1, x: -2.75 });
+            gsap.to(rightShoulder.rotation, { duration: 1, y: 0.05 });
+            gsap.to(rightShoulder.rotation, { duration: 1, z: 1.68 });
+            gsap.to(leftElbow.rotation, { duration: 1, x: -0.16 });
+            gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
+            gsap.to(leftElbow.rotation, { duration: 1, z: 1.61 });
+            gsap.to(rightElbow.rotation, { duration: 1, x: 2.02 });
+            gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
+            gsap.to(rightElbow.rotation, { duration: 1, z: 1.07 });
+            break;
+          case wallFour:
+            gsap.to(leftShoulder.rotation, { duration: 1, x: 2.63 });
+            gsap.to(leftShoulder.rotation, { duration: 1, y: 0 });
+            gsap.to(leftShoulder.rotation, { duration: 1, z: -1.76 });
+            gsap.to(rightShoulder.rotation, { duration: 1, x: 0.18 });
+            gsap.to(rightShoulder.rotation, { duration: 1, y: -0.38 });
+            gsap.to(rightShoulder.rotation, { duration: 1, z: 1.61 });
+            gsap.to(leftElbow.rotation, { duration: 1, x: -0.16 });
+            gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
+            gsap.to(leftElbow.rotation, { duration: 1, z: 1.61 });
+            gsap.to(rightElbow.rotation, { duration: 1, x: 2.02 });
+            gsap.to(rightElbow.rotation, { duration: 1, y: -0.29 });
+            gsap.to(rightElbow.rotation, { duration: 1, z: 1.07 });
+            break;
+          case wallFive:
+            gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
+            gsap.to(leftShoulder.rotation, { duration: 1, y: -1.38 });
+            gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
+            gsap.to(rightShoulder.rotation, { duration: 1, x: -2.34 });
+            gsap.to(rightShoulder.rotation, { duration: 1, y: -1.32 });
+            gsap.to(rightShoulder.rotation, { duration: 1, z: 1.09 });
+            gsap.to(leftElbow.rotation, { duration: 1, x: -0.08 });
+            gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
+            gsap.to(leftElbow.rotation, { duration: 1, z: 0.57 });
+            gsap.to(rightElbow.rotation, { duration: 1, x: 2.64 });
+            gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
+            gsap.to(rightElbow.rotation, { duration: 1, z: 2.51 });
+            break;
+          default:
+            break;
+        }
+        wallIdx += 1;
+      }
+    }
+    if (wallIdx > 0 && walls[wallIdx - 1].position.z < -1) {
+      gsap.to(leftShoulder.rotation, { duration: 1, x: 1.25 });
+      gsap.to(leftShoulder.rotation, { duration: 1, y: -1.2 });
+      gsap.to(leftShoulder.rotation, { duration: 1, z: -1.65 });
+      gsap.to(rightShoulder.rotation, { duration: 1, x: -2.29 });
+      gsap.to(rightShoulder.rotation, { duration: 1, y: -1.14 });
+      gsap.to(rightShoulder.rotation, { duration: 1, z: 0.97 });
+      gsap.to(leftElbow.rotation, { duration: 1, x: -0.08 });
+      gsap.to(leftElbow.rotation, { duration: 1, y: 0.27 });
+      gsap.to(leftElbow.rotation, { duration: 1, z: 0.57 });
+      gsap.to(rightElbow.rotation, { duration: 1, x: 2.64 });
+      gsap.to(rightElbow.rotation, { duration: 1, y: -0.53 });
+      gsap.to(rightElbow.rotation, { duration: 1, z: 2.51 });
+    }
+
+    // Model animation
+    if (mixer) {
+      mixer.update(deltaTime);
+    }
   }
 
   // Update controls
